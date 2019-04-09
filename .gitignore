@@ -2,3 +2,6 @@
 *.xml
 __pychache__/
 *.pyc
+
+#venv
+okpo-venv/
