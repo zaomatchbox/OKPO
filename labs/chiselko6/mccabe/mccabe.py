@@ -115,6 +115,9 @@ class VizGraph:
     def reset_tail(self):
         self.tails = [self.root]
 
+    def add_tail(self, node):
+        self.tails.append(node)
+
     def add_graph_to_root(self, graph):
         self.root.add_node(graph.root)
         if len(self.tails) == 1 and self.tails[0] == self.root:
@@ -168,15 +171,18 @@ class VizASTVisitor:
                 if_graph = self.dispatch(ch)
             else:
                 if_graph.add_graph(self.dispatch(ch))
-        else_graph = None
-        for ch in node.orelse:
-            if else_graph is None:
-                else_graph = self.dispatch(ch)
-            else:
-                else_graph.add_graph(self.dispatch(ch))
         graph = VizGraph(VizGraphNode(node.lineno, 'condition'))
         graph.add_graph_to_root(if_graph)
-        graph.add_graph_to_root(else_graph)
+        if node.orelse:
+            else_graph = None
+            for ch in node.orelse:
+                if else_graph is None:
+                    else_graph = self.dispatch(ch)
+                else:
+                    else_graph.add_graph(self.dispatch(ch))
+            graph.add_graph_to_root(else_graph)
+        else:
+            graph.add_tail(graph.root)
         return graph
 
     def visitFunctionDef(self, node):
@@ -252,11 +258,14 @@ class ASTVisitor:
         for ch in node.body:
             for n in self.dispatch(ch):
                 if_root.add_node(n)
-        else_root = Node('else', 'else', is_block=True)
-        for ch in node.orelse:
-            for n in self.dispatch(ch):
-                else_root.add_node(n)
-        return [if_root, else_root]
+        res = [if_root]
+        if node.orelse:
+            else_root = Node('else', 'else', is_block=True)
+            for ch in node.orelse:
+                for n in self.dispatch(ch):
+                    else_root.add_node(n)
+            res.append(else_root)
+        return res
 
     def visitFunctionDef(self, node):
         root = Node('def', 'function', is_block=True)
@@ -322,7 +331,9 @@ class A:
 
 
 while x < 100:
-    if x % 2 == 0:
+    if x % 2 == 0 and y > 0:
+        if c > 0:
+            print(a)
         y = 0
     else:
         y = 1
