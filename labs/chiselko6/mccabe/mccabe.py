@@ -1,4 +1,5 @@
 import ast
+from graphviz import Graph, Digraph
 
 
 class Node:
@@ -7,7 +8,7 @@ class Node:
         self._name = name
         self.type = type
         self.is_root = is_root
-        self.nodes = nodes or []
+        self._nodes = nodes or []
         self._parent = None
         is_block = is_block or is_root
         if is_block:
@@ -16,8 +17,12 @@ class Node:
             self._block_parent = None
 
     def add_node(self, node):
-        self.nodes.append(node)
+        self._nodes.append(node)
         node.parent = self.parent
+
+    @property
+    def nodes(self):
+        return iter(self._nodes)
 
     @property
     def parent(self):
@@ -45,30 +50,176 @@ class Node:
 
 class VizGraphNode:
 
-    def __init__(self, name, type):
-        self.nodes = []
+    def __init__(self, lineno, type):
+        self.type = type
+        self.id = f'#{lineno}_{type}'
+        self._nodes = []
 
     def add_node(self, node):
-        self.nodes.append(node)
+        self._nodes.append(node)
+
+    @property
+    def nodes(self):
+        return iter(self._nodes)
+
+    def viz(self, g, visited=None):
+        visited = visited or set()
+        if self.id in visited:
+            return g
+        visited.add(self.id)
+        for ch in self.nodes:
+            g.edge(self.id, ch.id)
+            ch.viz(g, visited)
+        return g
+
+    def dfs_vertices(self, visited):
+        if self.id in visited:
+            return
+        visited.add(self.id)
+        for ch in self.nodes:
+            ch.dfs_vertices(visited)
+
+    def dfs_edges(self, visited):
+        for ch in self.nodes:
+            edge = (self.id, ch.id)
+            if edge not in visited:
+                visited.add(edge)
+                ch.dfs_edges(visited)
+        return len(visited)
+
+    def get_mccabe(self, visited=None):
+        v_visited, e_visited = set(), set()
+        self.dfs_vertices(v_visited)
+        self.dfs_edges(e_visited)
+        vertices, edges = len(v_visited), len(e_visited)
+        return edges - vertices + 2
+
+    def __eq__(self, value):
+        return self.id == value.id
+
+    def __neq__(self, value):
+        return NotImplemented
+
+
+class VizGraph:
+
+    def __init__(self, root):
+        self.root = root
+        self.tails = [root]
+
+    def add_graph(self, graph):
+        for tail in self.tails:
+            tail.add_node(graph.root)
+        self.tails = graph.tails
+
+    def reset_tail(self):
+        self.tails = [self.root]
+
+    def add_graph_to_root(self, graph):
+        self.root.add_node(graph.root)
+        if len(self.tails) == 1 and self.tails[0] == self.root:
+            self.tails = graph.tails
+        else:
+            self.tails.extend(graph.tails)
+
+    @property
+    def id(self):
+        return self.root.id
+
+    def viz(self, g):
+        return self.root.viz(g)
+
+    def get_mccabe(self):
+        return self.root.get_mccabe()
+
+
+class VizASTVisitor:
+
+    def run(self, tree):
+        self.graph = self.dispatch(tree)
+
+    def dispatch(self, ast_node):
+        classname = ast_node.__class__.__name__
+        if hasattr(self, f'visit{classname}'):
+            graph = getattr(self, f'visit{classname}')(ast_node)
+        else:
+            if isinstance(ast_node, ast.stmt):
+                graph = self.visitSimpleStatement(ast_node)
+            else:
+                graph = None
+        return graph
+
+    def visitSimpleStatement(self, node):
+        return VizGraph(VizGraphNode(node.lineno, 'stmt'))
+
+    def visitLoop(self, node):
+        graph = VizGraph(VizGraphNode(node.lineno, 'loop'))
+        for ch in node.body:
+            graph.add_graph(self.dispatch(ch))
+        assert len(graph.tails) == 1
+        graph.add_graph(graph)
+        graph.reset_tail()
+        return graph
+
+    def visitIf(self, node):
+        if_graph = None
+        for ch in node.body:
+            if if_graph is None:
+                if_graph = self.dispatch(ch)
+            else:
+                if_graph.add_graph(self.dispatch(ch))
+        else_graph = None
+        for ch in node.orelse:
+            if else_graph is None:
+                else_graph = self.dispatch(ch)
+            else:
+                else_graph.add_graph(self.dispatch(ch))
+        graph = VizGraph(VizGraphNode(node.lineno, 'condition'))
+        graph.add_graph_to_root(if_graph)
+        graph.add_graph_to_root(else_graph)
+        return graph
+
+    def visitFunctionDef(self, node):
+        graph = VizGraph(VizGraphNode(node.lineno, 'func'))
+        for ch in node.body:
+            graph.add_graph(self.dispatch(ch))
+        return graph
+
+    def visitClassDef(self, node):
+        graph = VizGraph(VizGraphNode(node.lineno, 'class'))
+        for ch in ast.iter_child_nodes(node):
+            graph.add_graph(self.dispatch(ch))
+        return graph
+
+    def visitModule(self, node):
+        graph = VizGraph(VizGraphNode(0, 'module'))
+        for ch in ast.iter_child_nodes(node):
+            graph.add_graph(self.dispatch(ch))
+        return graph
+
+    def viz(self):
+        g = Digraph('G', format='png', engine='neato')
+        return self.graph.viz(g)
+
+    def get_mccabe(self):
+        return self.graph.get_mccabe()
+
+    def visitWith(self, node):
+        graph = VizGraph(VizGraphNode(node.lineno, 'with'))
+        for ch in node.body:
+            graph.add_graph(self.dispatch(ch))
+        return graph
+
+    visitAsyncWith = visitWith
+    visitAsyncFunctionDef = visitFunctionDef
+    # visitTry = visitTryExcept
+    visitAsyncFor = visitFor = visitWhile = visitLoop
 
 
 class ASTVisitor:
 
     def __init__(self):
         self.root = Node('__main__', 'root', is_root=True)
-        self.current_node = self.root
-
-    def dispatch_list(self, node_list):
-        for node in node_list:
-            self.dispatch(node)
-
-    def dispatch_inside(self, node):
-        for node in ast.iter_child_nodes(node):
-            self.dispatch(node)
-
-    def move(self, node):
-        self.current_node.add_node(node)
-        self.current_node = node
 
     def run(self, tree):
         nodes = self.dispatch(tree)
@@ -87,11 +238,9 @@ class ASTVisitor:
         return nodes
 
     def visitSimpleStatement(self, node):
-        print('simple statement', node)
         return [Node('simple statement', 'stmt')]
 
     def visitLoop(self, node):
-        print('loop', node)
         root = Node('loop', 'loop', is_block=True)
         for ch in ast.iter_child_nodes(node):
             for n in self.dispatch(ch):
@@ -99,7 +248,6 @@ class ASTVisitor:
         return [root]
 
     def visitIf(self, node):
-        print('if', node)
         if_root = Node('if', 'if', is_block=True)
         for ch in node.body:
             for n in self.dispatch(ch):
@@ -111,7 +259,6 @@ class ASTVisitor:
         return [if_root, else_root]
 
     def visitFunctionDef(self, node):
-        print('def', node)
         root = Node('def', 'function', is_block=True)
         for ch in ast.iter_child_nodes(node):
             for n in self.dispatch(ch):
@@ -119,7 +266,6 @@ class ASTVisitor:
         return [root]
 
     def visitClassDef(self, node):
-        print('class', node)
         root = Node('class', 'class', is_block=True)
         for ch in ast.iter_child_nodes(node):
             for n in self.dispatch(ch):
@@ -127,7 +273,6 @@ class ASTVisitor:
         return [root]
 
     def visitModule(self, node):
-        print('module', node)
         root = Node('module', 'module', is_block=True)
         for ch in ast.iter_child_nodes(node):
             for n in self.dispatch(ch):
@@ -151,7 +296,14 @@ class ASTVisitor:
             value += self.get_mccabe(ch)
         return value
 
-    # visitAsyncWith = visitWith
+    def visitWith(self, node):
+        root = Node('with', 'with', is_block=True)
+        for ch in node.body:
+            for n in self.dispatch(ch):
+                root.add_node(n)
+        return [root]
+
+    visitAsyncWith = visitWith
     visitAsyncFunctionDef = visitFunctionDef
     # visitTry = visitTryExcept
     visitAsyncFor = visitFor = visitWhile = visitLoop
@@ -177,12 +329,28 @@ while x < 100:
         lala = 3
     x += 1
 p = True
+
+with a:
+    a += 3
 """
 
 
-if __name__ == '__main__':
+def run_ast():
     tree = compile(CODE, 'lala', 'exec', ast.PyCF_ONLY_AST)
     visitor = ASTVisitor()
     visitor.run(tree)
     visitor.print()
     print(visitor.get_mccabe())
+
+
+def run_viz():
+    tree = compile(CODE, 'lala', 'exec', ast.PyCF_ONLY_AST)
+    visitor = VizASTVisitor()
+    visitor.run(tree)
+    visitor.viz().view()
+    print(visitor.get_mccabe())
+
+
+if __name__ == '__main__':
+    run_ast()
+    run_viz()
