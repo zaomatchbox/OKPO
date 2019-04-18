@@ -3,8 +3,9 @@ import ast
 
 class Node:
 
-    def __init__(self, name, is_root=False, is_block=False, nodes=None):
+    def __init__(self, name, type, is_root=False, is_block=False, nodes=None):
         self._name = name
+        self.type = type
         self.is_root = is_root
         self.nodes = nodes or []
         self._parent = None
@@ -15,8 +16,8 @@ class Node:
             self._block_parent = None
 
     def add_node(self, node):
-        self.block_parent.nodes.append(node)
-        node.parent = self.block_parent
+        self.nodes.append(node)
+        node.parent = self.parent
 
     @property
     def parent(self):
@@ -42,10 +43,19 @@ class Node:
         self._name = value
 
 
+class VizGraphNode:
+
+    def __init__(self, name, type):
+        self.nodes = []
+
+    def add_node(self, node):
+        self.nodes.append(node)
+
+
 class ASTVisitor:
 
     def __init__(self):
-        self.root = Node('__main__', is_root=True)
+        self.root = Node('__main__', 'root', is_root=True)
         self.current_node = self.root
 
     def dispatch_list(self, node_list):
@@ -60,46 +70,69 @@ class ASTVisitor:
         self.current_node.add_node(node)
         self.current_node = node
 
+    def run(self, tree):
+        nodes = self.dispatch(tree)
+        for n in nodes:
+            self.root.add_node(n)
+
     def dispatch(self, ast_node):
         classname = ast_node.__class__.__name__
         if hasattr(self, f'visit{classname}'):
-            node = getattr(self, f'visit{classname}')(ast_node)
+            nodes = getattr(self, f'visit{classname}')(ast_node)
         else:
             if isinstance(ast_node, ast.stmt):
-                node = self.visitSimpleStatement(ast_node)
+                nodes = self.visitSimpleStatement(ast_node)
             else:
-                # print('ERROR', ast_node)
-                return
-        self.move(node)
-        self.dispatch_inside(ast_node)
-        self.current_node = self.current_node.parent
+                nodes = []
+        return nodes
 
     def visitSimpleStatement(self, node):
         print('simple statement', node)
-        return Node('simple statement')
+        return [Node('simple statement', 'stmt')]
 
     def visitLoop(self, node):
         print('loop', node)
-        return Node('loop', is_block=True)
-
-    # def visitWith(self, node, *args):
-    #     print('with', node, args)
+        root = Node('loop', 'loop', is_block=True)
+        for ch in ast.iter_child_nodes(node):
+            for n in self.dispatch(ch):
+                root.add_node(n)
+        return [root]
 
     def visitIf(self, node):
-        print('if', node, node.orelse)
-        return Node('if', is_block=True)
+        print('if', node)
+        if_root = Node('if', 'if', is_block=True)
+        for ch in node.body:
+            for n in self.dispatch(ch):
+                if_root.add_node(n)
+        else_root = Node('else', 'else', is_block=True)
+        for ch in node.orelse:
+            for n in self.dispatch(ch):
+                else_root.add_node(n)
+        return [if_root, else_root]
 
     def visitFunctionDef(self, node):
         print('def', node)
-        return Node('def', is_block=True)
+        root = Node('def', 'function', is_block=True)
+        for ch in ast.iter_child_nodes(node):
+            for n in self.dispatch(ch):
+                root.add_node(n)
+        return [root]
 
     def visitClassDef(self, node):
         print('class', node)
-        return Node('class', is_block=True)
+        root = Node('class', 'class', is_block=True)
+        for ch in ast.iter_child_nodes(node):
+            for n in self.dispatch(ch):
+                root.add_node(n)
+        return [root]
 
     def visitModule(self, node):
         print('module', node)
-        return Node('module', is_block=True)
+        root = Node('module', 'module', is_block=True)
+        for ch in ast.iter_child_nodes(node):
+            for n in self.dispatch(ch):
+                root.add_node(n)
+        return [root]
 
     def print(self, node=None, offset=0):
         node = node or self.root
@@ -107,8 +140,16 @@ class ASTVisitor:
         for ch in node.nodes:
             self.print(ch, offset + 4)
 
-    # def visitTryExcept(self, node):
-    #     print('try..except', node)
+    def get_mccabe(self, node=None):
+        node = node or self.root
+        value = 0
+        if node.type == 'if' or node.type == 'else' or node.type == 'loop':
+            value = 1
+        else:
+            value = 0
+        for ch in node.nodes:
+            value += self.get_mccabe(ch)
+        return value
 
     # visitAsyncWith = visitWith
     visitAsyncFunctionDef = visitFunctionDef
@@ -133,6 +174,7 @@ while x < 100:
         y = 0
     else:
         y = 1
+        lala = 3
     x += 1
 p = True
 """
@@ -141,5 +183,6 @@ p = True
 if __name__ == '__main__':
     tree = compile(CODE, 'lala', 'exec', ast.PyCF_ONLY_AST)
     visitor = ASTVisitor()
-    visitor.dispatch(tree)
+    visitor.run(tree)
     visitor.print()
+    print(visitor.get_mccabe())
