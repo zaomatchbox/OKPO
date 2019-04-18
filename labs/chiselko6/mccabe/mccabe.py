@@ -4,17 +4,12 @@ from graphviz import Graph, Digraph
 
 class Node:
 
-    def __init__(self, name, type, is_root=False, is_block=False, nodes=None):
+    def __init__(self, name, type, is_root=False, nodes=None):
         self._name = name
         self.type = type
         self.is_root = is_root
         self._nodes = nodes or []
         self._parent = None
-        is_block = is_block or is_root
-        if is_block:
-            self._block_parent = self
-        else:
-            self._block_parent = None
 
     def add_node(self, node):
         self._nodes.append(node)
@@ -31,13 +26,6 @@ class Node:
     @parent.setter
     def parent(self, value):
         self._parent = value
-
-    @property
-    def block_parent(self):
-        if self._block_parent is not None:
-            return self._block_parent
-        self._block_parent = self.parent.block_parent
-        return self._block_parent
 
     @property
     def name(self):
@@ -247,20 +235,20 @@ class ASTVisitor:
         return [Node('simple statement', 'stmt')]
 
     def visitLoop(self, node):
-        root = Node('loop', 'loop', is_block=True)
+        root = Node('loop', 'loop')
         for ch in ast.iter_child_nodes(node):
             for n in self.dispatch(ch):
                 root.add_node(n)
         return [root]
 
     def visitIf(self, node):
-        if_root = Node('if', 'if', is_block=True)
+        if_root = Node('if', 'if')
         for ch in node.body:
             for n in self.dispatch(ch):
                 if_root.add_node(n)
         res = [if_root]
         if node.orelse:
-            else_root = Node('else', 'else', is_block=True)
+            else_root = Node('else', 'else')
             for ch in node.orelse:
                 for n in self.dispatch(ch):
                     else_root.add_node(n)
@@ -268,21 +256,21 @@ class ASTVisitor:
         return res
 
     def visitFunctionDef(self, node):
-        root = Node('def', 'function', is_block=True)
+        root = Node('def', 'function')
         for ch in ast.iter_child_nodes(node):
             for n in self.dispatch(ch):
                 root.add_node(n)
         return [root]
 
     def visitClassDef(self, node):
-        root = Node('class', 'class', is_block=True)
+        root = Node('class', 'class', )
         for ch in ast.iter_child_nodes(node):
             for n in self.dispatch(ch):
                 root.add_node(n)
         return [root]
 
     def visitModule(self, node):
-        root = Node('module', 'module', is_block=True)
+        root = Node('module', 'module')
         for ch in ast.iter_child_nodes(node):
             for n in self.dispatch(ch):
                 root.add_node(n)
@@ -306,7 +294,7 @@ class ASTVisitor:
         return value
 
     def visitWith(self, node):
-        root = Node('with', 'with', is_block=True)
+        root = Node('with', 'with')
         for ch in node.body:
             for n in self.dispatch(ch):
                 root.add_node(n)
