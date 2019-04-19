@@ -19,12 +19,19 @@ def home():
 @app.route('/mccabe', methods=['POST'])
 def mccabe():
     code = request.form['source']
-    graph = run_viz(code)
-    code_graph = run_ast(code)
+    error = None
+    try:
+        graph = run_viz(code)
+        code_graph = run_ast(code)
+    except Exception as e:
+        error = repr(e)
+        graph = ''
+        code_graph = ''
     context = {
-        'graph': json.dumps(graph.serialize()),
-        'mccabe': graph.get_mccabe(),
+        'graph': '' if error is not None else json.dumps(graph.serialize()),
+        'mccabe': 0 if error is not None else graph.get_mccabe(),
         'code': code,
-        'code_graph': code_graph,
+        'code_graph': '' if error is not None else code_graph,
+        'error': error,
     }
     return render_template('index.html', **context)

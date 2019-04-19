@@ -21,6 +21,11 @@
     </style>
   </head>
   <body>
+    {% if error %}
+    <div style="color: red;">
+      {{error}}
+    </div>
+    {% endif %}
     <div>
       <div style="margin: 0; display: inline-block;">
         <form action="/mccabe" method="POST">
