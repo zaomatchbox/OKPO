@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template
-from lib.mccabe import run_ast, run_viz
+from src.mccabe import run_ast, run_viz
 import json
 
 app = Flask(__name__)
