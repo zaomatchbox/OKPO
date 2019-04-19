@@ -88,6 +88,21 @@ class VizGraphNode:
     def __neq__(self, value):
         return NotImplemented
 
+    def serialize(self):
+        return self._serialize(set())
+
+    def _serialize(self, visited):
+        if self.id in visited:
+            nodes = []
+        else:
+            visited.add(self.id)
+            nodes = [node._serialize(visited) for node in self.nodes]
+        return {
+            'id': self.id,
+            'type': self.type,
+            'nodes': nodes,
+        }
+
 
 class VizGraph:
 
@@ -122,6 +137,9 @@ class VizGraph:
 
     def get_mccabe(self):
         return self.root.get_mccabe()
+
+    def serialize(self):
+        return self.root.serialize()
 
 
 class VizASTVisitor:
@@ -194,6 +212,9 @@ class VizASTVisitor:
     def viz(self):
         g = Digraph('G', format='png', engine='neato')
         return self.graph.viz(g)
+
+    def serialize(self):
+        return self.graph.serialize()
 
     def get_mccabe(self):
         return self.graph.get_mccabe()
@@ -282,6 +303,17 @@ class ASTVisitor:
         for ch in node.nodes:
             self.print(ch, offset + 4)
 
+    def _serialize(self, node, offset):
+        shift = ' ' * offset
+        line = f'{shift}{node.name}'
+        res = [line]
+        for ch in node.nodes:
+            res.extend(self._serialize(ch, offset + 4))
+        return res
+
+    def serialize(self):
+        return '\n'.join(self._serialize(self.root, 0))
+
     def get_mccabe(self, node=None):
         node = node or self.root
         value = 0
@@ -317,7 +349,6 @@ class A:
         c += 10
         return c
 
-
 while x < 100:
     if x % 2 == 0 and y > 0:
         if c > 0:
@@ -334,22 +365,24 @@ with a:
 """
 
 
-def run_ast():
-    tree = compile(CODE, 'lala', 'exec', ast.PyCF_ONLY_AST)
+def run_ast(code):
+    tree = compile(code, 'lala', 'exec', ast.PyCF_ONLY_AST)
     visitor = ASTVisitor()
     visitor.run(tree)
-    visitor.print()
-    print(visitor.get_mccabe())
+    # visitor.print()
+    # print(visitor.get_mccabe())
+    return visitor.serialize()
 
 
-def run_viz():
-    tree = compile(CODE, 'lala', 'exec', ast.PyCF_ONLY_AST)
+def run_viz(code):
+    tree = compile(code, 'lala', 'exec', ast.PyCF_ONLY_AST)
     visitor = VizASTVisitor()
     visitor.run(tree)
-    visitor.viz().view()
-    print(visitor.get_mccabe())
+    # visitor.viz().view()
+    # print(visitor.get_mccabe())
+    return visitor.graph
 
 
 if __name__ == '__main__':
-    run_ast()
-    run_viz()
+    run_ast(CODE)
+    run_viz(CODE)
