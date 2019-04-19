@@ -27,6 +27,7 @@ def mccabe():
         error = repr(e)
         graph = ''
         code_graph = ''
+        raise e
     context = {
         'graph': '' if error is not None else json.dumps(graph.serialize()),
         'mccabe': 0 if error is not None else graph.get_mccabe(),

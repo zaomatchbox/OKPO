@@ -152,10 +152,7 @@ class VizASTVisitor:
         if hasattr(self, f'visit{classname}'):
             graph = getattr(self, f'visit{classname}')(ast_node)
         else:
-            if isinstance(ast_node, ast.stmt):
-                graph = self.visitSimpleStatement(ast_node)
-            else:
-                graph = None
+            graph = self.visitSimpleStatement(ast_node)
         return graph
 
     def visitSimpleStatement(self, node):
@@ -165,7 +162,7 @@ class VizASTVisitor:
         graph = VizGraph(VizGraphNode(node.lineno, 'loop'))
         for ch in node.body:
             graph.add_graph(self.dispatch(ch))
-        assert len(graph.tails) == 1
+        # assert len(graph.tails) == 1
         graph.add_graph(graph)
         graph.reset_tail()
         return graph
@@ -225,9 +222,30 @@ class VizASTVisitor:
             graph.add_graph(self.dispatch(ch))
         return graph
 
+    def visitTryExcept(self, node):
+        try_graph = None
+        for ch in node.body:
+            if try_graph is None:
+                try_graph = self.dispatch(ch)
+            else:
+                try_graph.add_graph(self.dispatch(ch))
+        graph = VizGraph(VizGraphNode(node.lineno, 'try'))
+        graph.add_graph_to_root(try_graph)
+        if node.handlers:
+            handlers_graph = None
+            for ch in node.handlers:
+                if handlers_graph is None:
+                    handlers_graph = self.dispatch(ch)
+                else:
+                    handlers_graph.add_graph(self.dispatch(ch))
+            graph.add_graph_to_root(handlers_graph)
+        else:
+            graph.add_tail(graph.root)
+        return graph
+
     visitAsyncWith = visitWith
     visitAsyncFunctionDef = visitFunctionDef
-    # visitTry = visitTryExcept
+    visitTry = visitTryExcept
     visitAsyncFor = visitFor = visitWhile = visitLoop
 
 
@@ -246,10 +264,7 @@ class ASTVisitor:
         if hasattr(self, f'visit{classname}'):
             nodes = getattr(self, f'visit{classname}')(ast_node)
         else:
-            if isinstance(ast_node, ast.stmt):
-                nodes = self.visitSimpleStatement(ast_node)
-            else:
-                nodes = []
+            nodes = self.visitSimpleStatement(ast_node)
         return nodes
 
     def visitSimpleStatement(self, node):
@@ -332,9 +347,23 @@ class ASTVisitor:
                 root.add_node(n)
         return [root]
 
+    def visitTryExcept(self, node):
+        try_root = Node('try', 'try')
+        for ch in node.body:
+            for n in self.dispatch(ch):
+                try_root.add_node(n)
+        res = [try_root]
+        if node.handlers:
+            handlers_root = Node('except', 'except')
+            for ch in node.handlers:
+                for n in self.dispatch(ch):
+                    handlers_root.add_node(n)
+            res.append(handlers_root)
+        return res
+
     visitAsyncWith = visitWith
     visitAsyncFunctionDef = visitFunctionDef
-    # visitTry = visitTryExcept
+    visitTry = visitTryExcept
     visitAsyncFor = visitFor = visitWhile = visitLoop
 
 
