@@ -1,5 +1,5 @@
 from flask import Flask, request, render_template
-from src.mccabe import run_ast, run_viz
+from .src.mccabe import run_ast, run_viz
 import json
 
 app = Flask(__name__)
@@ -7,7 +7,13 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    context = {
+        'graph': {},
+        'mccabe': 0,
+        'code': '',
+        'code_graph': '',
+    }
+    return render_template('index.html', **context)
 
 
 @app.route('/mccabe', methods=['POST'])
