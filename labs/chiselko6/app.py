@@ -1,5 +1,6 @@
 from flask import Flask, request, render_template
 from .mccabe.src.mccabe import run_ast, run_viz
+from .sql_injection.sql1 import search
 import json
 
 app = Flask(__name__)
@@ -39,3 +40,16 @@ def mccabe():
             'error': error,
         }
     return render_template('mccabe.html', **context)
+
+
+@app.route('/sql1', methods=['GET', 'POST'])
+def sql_first():
+    if request.method == 'GET':
+        context = {
+            'results': search(),
+        }
+    else:
+        context = {
+            'results': search(request.form['q'])
+        }
+    return render_template('sql/1.html', **context)
