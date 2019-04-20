@@ -45,6 +45,7 @@ def mccabe():
 
 
 @app.route('/sql1', methods=['GET', 'POST'])
+@app.route('/sql4', methods=['GET', 'POST'])
 def sql_first():
     if request.method == 'GET':
         context = {
