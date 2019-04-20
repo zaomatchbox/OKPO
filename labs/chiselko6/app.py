@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template
 from .mccabe.src.mccabe import run_ast, run_viz
-from .sql_injection.sql1 import search
+from .sql_injection.sql1 import search as search1
+from .sql_injection.sql2 import search as search2
 import json
 
 app = Flask(__name__)
@@ -46,10 +47,23 @@ def mccabe():
 def sql_first():
     if request.method == 'GET':
         context = {
-            'results': search(),
+            'results': search1(),
         }
     else:
         context = {
-            'results': search(request.form['q'])
+            'results': search1(request.form['q'])
         }
     return render_template('sql/1.html', **context)
+
+
+@app.route('/sql2', methods=['GET', 'POST'])
+def sql_second():
+    if request.method == 'GET':
+        context = {
+            'status': False,
+        }
+    else:
+        context = {
+            'status': search2(request.form['login'], request.form['password'])
+        }
+    return render_template('sql/2.html', **context)
