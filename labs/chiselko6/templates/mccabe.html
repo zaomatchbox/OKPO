@@ -1,60 +1,61 @@
-<!DOCTYPE html>
-<html lang="en" dir="ltr">
-  <head>
-    <meta charset="utf-8">
-    <title>McCabe</title>
-    <style type="text/css">
-      .links line {
-        stroke: #999;
-        stroke-opacity: 0.6;
-      }
+{% extends "index.html" %}
+{% block title %}McCabe{% endblock %}
+{% block head %}
+  {{ super() }}
+  <style type="text/css">
+    .links line {
+      stroke: #999;
+      stroke-opacity: 0.6;
+    }
 
-      .nodes circle {
-        stroke: #fff;
-        stroke-width: 1.5px;
-      }
+    .nodes circle {
+      stroke: #fff;
+      stroke-width: 1.5px;
+    }
 
-      text {
-        font-family: sans-serif;
-        font-size: 12px;
-      }
-    </style>
-  </head>
-  <body>
-    {% if error %}
-    <div style="color: red;">
-      {{error}}
-    </div>
-    {% endif %}
-    <div>
-      <div style="margin: 0; display: inline-block;">
-        <form action="/mccabe" method="POST">
-          <textarea rows="40" cols="100" name="source">
-{% if code %}{{code}}{% else %}
+    text {
+      font-family: sans-serif;
+      font-size: 12px;
+    }
+  </style>
+{% endblock %}
+{% block content %}
+  {% if error %}
+  <div style="color: red;">
+    {{error}}
+  </div>
+  {% endif %}
+  <div>
+    <div style="margin: 0; display: inline-block;">
+      <form action="/mccabe" method="POST">
+        <textarea rows="40" cols="100" name="source">
+  {% if code %}{{code}}{% else %}
 def func(a, b):
     return a + b{% endif %}
-          </textarea>
-          <input type="submit" value="Calculate McCabe" />
-        </form>
-      </div>
-      <div style="width: 400px; margin: 0; display: inline-block;">
-        {% if mccabe %}
-        Code graph:
-        <pre>{{code_graph}}</pre>
-        {% else %}
-        No code graph
-        {% endif %}
-      </div>
+        </textarea>
+        <input type="submit" value="Calculate McCabe" />
+      </form>
     </div>
-    {% if mccabe %}
-    McCabe: {{mccabe}}
-    {% else %}
-    No value
-    {% endif %}
-    <div>
-      <svg width="1200" height="800"></svg>
+    <div style="width: 400px; margin: 0; display: inline-block;">
+      {% if mccabe %}
+      Code graph:
+      <pre>{{code_graph}}</pre>
+      {% else %}
+      No code graph
+      {% endif %}
     </div>
-  </body>
+  </div>
+  {% if mccabe %}
+  McCabe: {{mccabe}}
+  {% else %}
+  No value
+  {% endif %}
+  <div>
+    <svg width="1200" height="800"></svg>
+  </div>
+{% endblock %}
+
+{% block scripts %}
   <script src="https://d3js.org/d3.v4.min.js"></script>
 
   <script type="text/javascript">
@@ -183,4 +184,4 @@ def func(a, b):
     viz(viz_graph);
 
   </script>
-</html>
+{% endblock %}

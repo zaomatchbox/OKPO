@@ -1,1 +1,1 @@
-web: gunicorn labs.chiselko6.mccabe.app:app
+web: gunicorn labs.chiselko6.app:app
