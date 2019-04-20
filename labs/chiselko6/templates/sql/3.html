@@ -1,0 +1,27 @@
+{% extends "index.html" %}
+{% block title %}SQL Injection 3{% endblock %}
+{% block content %}
+{% if item %}
+<div class="card">
+  <div class="card-body">
+    {{item}}
+  </div>
+</div>
+{% else %}
+<ul class="list-group">
+  {% for item in items %}
+    <li class="list-group-item"><a href="/sql3?item={{item}}">{{item}}</a></li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if item %}
+<form method="POST">
+  <div class="form-group">
+    <label for="item">Update item</label>
+    <input type="text" name="item" class="form-control" id="item" aria-describedby="item" placeholder="New name">
+  </div>
+  <button type="submit" class="btn btn-primary">Update</button>
+</form>
+{% endif %}
+{% endblock %}
