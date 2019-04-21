@@ -9,23 +9,13 @@ class Node:
         self.type = type
         self.is_root = is_root
         self._nodes = nodes or []
-        self._parent = None
 
     def add_node(self, node):
         self._nodes.append(node)
-        node.parent = self.parent
 
     @property
     def nodes(self):
         return iter(self._nodes)
-
-    @property
-    def parent(self):
-        return self._parent
-
-    @parent.setter
-    def parent(self, value):
-        self._parent = value
 
     @property
     def name(self):
@@ -60,25 +50,26 @@ class VizGraphNode:
             ch.viz(g, visited)
         return g
 
-    def dfs_vertices(self, visited):
+    def _dfs_vertices(self, visited):
         if self.id in visited:
             return
         visited.add(self.id)
         for ch in self.nodes:
-            ch.dfs_vertices(visited)
+            ch._dfs_vertices(visited)
 
-    def dfs_edges(self, visited):
+    def _dfs_edges(self, visited):
         for ch in self.nodes:
             edge = (self.id, ch.id)
             if edge not in visited:
                 visited.add(edge)
-                ch.dfs_edges(visited)
+                ch._dfs_edges(visited)
         return len(visited)
 
-    def get_mccabe(self, visited=None):
+    @property
+    def mccabe(self):
         v_visited, e_visited = set(), set()
-        self.dfs_vertices(v_visited)
-        self.dfs_edges(e_visited)
+        self._dfs_vertices(v_visited)
+        self._dfs_edges(e_visited)
         vertices, edges = len(v_visited), len(e_visited)
         return edges - vertices + 2
 
@@ -135,8 +126,9 @@ class VizGraph:
     def viz(self, g):
         return self.root.viz(g)
 
-    def get_mccabe(self):
-        return self.root.get_mccabe()
+    @property
+    def mccabe(self):
+        return self.root.mccabe
 
     def serialize(self):
         return self.root.serialize()
@@ -162,7 +154,6 @@ class VizASTVisitor:
         graph = VizGraph(VizGraphNode(node.lineno, 'loop'))
         for ch in node.body:
             graph.add_graph(self.dispatch(ch))
-        # assert len(graph.tails) == 1
         graph.add_graph(graph)
         graph.reset_tail()
         return graph
@@ -213,8 +204,9 @@ class VizASTVisitor:
     def serialize(self):
         return self.graph.serialize()
 
-    def get_mccabe(self):
-        return self.graph.get_mccabe()
+    @property
+    def mccabe(self):
+        return self.graph.mccabe
 
     def visitWith(self, node):
         graph = VizGraph(VizGraphNode(node.lineno, 'with'))
@@ -400,7 +392,7 @@ def run_ast(code):
     visitor.run(tree)
     # visitor.print()
     # print(visitor.get_mccabe())
-    return visitor.serialize()
+    return visitor
 
 
 def run_viz(code):
@@ -409,7 +401,7 @@ def run_viz(code):
     visitor.run(tree)
     # visitor.viz().view()
     # print(visitor.get_mccabe())
-    return visitor.graph
+    return visitor
 
 
 if __name__ == '__main__':

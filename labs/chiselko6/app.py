@@ -36,9 +36,9 @@ def mccabe():
             raise e
         context = {
             'graph': '' if error is not None else json.dumps(graph.serialize()),
-            'mccabe': 0 if error is not None else graph.get_mccabe(),
+            'mccabe': 0 if error is not None else graph.mccabe,
             'code': code,
-            'code_graph': '' if error is not None else code_graph,
+            'code_graph': '' if error is not None else code_graph.serialize(),
             'error': error,
         }
     return render_template('mccabe.html', **context)
