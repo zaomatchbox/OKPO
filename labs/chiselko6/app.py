@@ -24,7 +24,12 @@ def mccabe():
             'error': '',
         }
     else:
-        code = request.form['source']
+        if request.files['file']:
+            f = request.files['file']
+            code = f.read()
+        else:
+            code = request.form['source']
+        print(code)
         error = None
         try:
             graph = run_viz(code)
@@ -33,7 +38,6 @@ def mccabe():
             error = repr(e)
             graph = ''
             code_graph = ''
-            raise e
         context = {
             'graph': '' if error is not None else json.dumps(graph.serialize()),
             'mccabe': 0 if error is not None else graph.mccabe,

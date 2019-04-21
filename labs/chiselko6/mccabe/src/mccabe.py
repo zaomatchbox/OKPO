@@ -138,6 +138,7 @@ class VizASTVisitor:
 
     def run(self, tree):
         self.graph = self.dispatch(tree)
+        self.graph.add_graph(VizGraph(VizGraphNode('End', 'End')))
 
     def dispatch(self, ast_node):
         classname = ast_node.__class__.__name__
@@ -391,7 +392,7 @@ def run_ast(code):
     visitor = ASTVisitor()
     visitor.run(tree)
     # visitor.print()
-    # print(visitor.get_mccabe())
+    print(visitor.get_mccabe())
     return visitor
 
 
@@ -400,7 +401,7 @@ def run_viz(code):
     visitor = VizASTVisitor()
     visitor.run(tree)
     # visitor.viz().view()
-    # print(visitor.get_mccabe())
+    print(visitor.mccabe)
     return visitor
 
 

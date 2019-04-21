@@ -27,12 +27,18 @@
   {% endif %}
   <div>
     <div style="margin: 0; display: inline-block;">
-      <form action="/mccabe" method="POST">
-        <textarea rows="40" cols="100" name="source">
-  {% if code %}{{code}}{% else %}
-def func(a, b):
+      <form action="/mccabe" method="POST" enctype="multipart/form-data">
+        <div class="form-group has-feedback">
+          <textarea rows="40" cols="100" name="source">{% if code %}{{code}}{% else %}def func(a, b):
     return a + b{% endif %}
-        </textarea>
+          </textarea>
+        </div>
+        <div class="form-group has-feedback">
+            <div class="input-group">
+                <span class="input-group-addon"><span class="glyphicon glyphicon-folder-open"></span></span>
+                <input type="file" id="file" class="form-control btn btn-default" name="file" value="{{ request.form.file }}">
+            </div>
+        </div>
         <input type="submit" value="Calculate McCabe" />
       </form>
     </div>
